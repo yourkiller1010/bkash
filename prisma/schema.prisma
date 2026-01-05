@@ -1,0 +1,95 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID_WAITING_USD
+  USD_RECEIVED
+  COMPLETED
+  REJECTED
+}
+
+enum TicketStatus {
+  OPEN
+  PENDING
+  CLOSED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  label     String?
+  tokenHash String   @unique
+  isActive  Boolean  @default(true)
+
+  sessions  Session[]
+  orders    Order[]
+  tickets   Ticket[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+}
+
+model Order {
+  id            String      @id @default(cuid())
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  customerName  String
+  customerPhone String
+  customerEmail String?
+
+  bdtAmount     Int
+  rateBdtPerUsd Int
+  usdAmount     Float
+
+  bkashTrxId    String?
+  status        OrderStatus @default(PENDING_PAYMENT)
+  adminNote     String?
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+}
+
+model Ticket {
+  id        String       @id @default(cuid())
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  subject   String
+  status    TicketStatus @default(OPEN)
+
+  messages  TicketMessage[]
+}
+
+model TicketMessage {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  role      String   // "user" | "admin"
+  message   String
+}
